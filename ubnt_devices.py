@@ -44,7 +44,7 @@ class Device(object):
 
     def __setattr__(self, name, value):
         try:
-            self.getattr(self, name)
+            getattr(self, name)
         except AttributeError:
             raise
         else:
@@ -58,13 +58,15 @@ class Device(object):
             cmd = 'sed -i "/{0}/ c {0}={1}" /tmp/system.cfg'.format(config_name, value)
             self.run(cmd)
 
-    # def __delattr__(self, name):
-    #     if not isinstance(name, list):
-    #         name = name.replace('_', '.')
-    #         cmd = 'sed -i /{0}/d /tmp/system.cfg'.format(name)
-    #         self.run(cmd)
-    #     else:
-    #         raise AttributeError
+    def __delattr__(self, name):
+        try:
+            getattr(self, name)
+        except AttributeError:
+            raise
+        else:
+            name = name.replace('_', '.')
+            cmd = 'sed -i /{0}/d /tmp/system.cfg'.format(name)
+            self.run(cmd)
 
     def connect(self):
         try:
