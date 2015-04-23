@@ -27,10 +27,11 @@ class Device(object):
 
     def __getattr__(self, name):
         config_name = name.replace('_', '.')
+        config_name = name.replace('0', '_')
         values = self.run('grep "{0}" /tmp/system.cfg'.format(config_name))
 
         if len(values) == 1:
-            name_length = len(name) + 1 # Plus 1 to ignore '=' in config
+            name_length = len(name) + 1  # Plus 1 to ignore '=' in config
             value = values[0][name_length:]
 
             if value == 'enabled':
@@ -102,6 +103,12 @@ class Device(object):
 
     def is_alive(self):
         return self.transport.is_alive()
+
+    def freq(self):
+        try:
+            return self.radio_1_freq
+        except AttributeError:
+            return (self.radio_1_tx0freq, self.radio_1_rx0freq)  # Change to namedtuple
 
     # Daemons
     def start_snmp_daemon(self):
