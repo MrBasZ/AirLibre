@@ -1,6 +1,7 @@
 import textwrap
 from collections import namedtuple
 from paramiko import SSHClient, AutoAddPolicy
+from scp import SCPClient
 
 
 class Device(object):
@@ -18,6 +19,15 @@ class Device(object):
     def connect(self):
         self.session.connect(self.host, username=self.username,
                 password=self.password)
+
+    def transport(self):
+        return self.session.get_transport()
+
+    def scp(self):
+        return SCPClient(self.transport())
+
+    def download_conf(self):
+        return self.scp().get('/tmp/system.cfg')
 
     def run(self, command):
         stdin, stdout, stderr = self.session.exec_command(command)
@@ -156,7 +166,10 @@ class Device(object):
     def live_frequency(self):
         cmd = 'iwconfig 2> /dev/null | grep Mode | cut -d ":" -f3 | cut -d " " -f1'
         freq = self.run(cmd)[0].replace('.','')
-        if len(freq) == 3:
+
+        if freq.startswith('9'):
+            return freq
+        elif len(freq) == 3:
             return freq + '0'
         elif len(freq) == 2:
             return freq + '00'
