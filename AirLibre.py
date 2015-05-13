@@ -3,6 +3,7 @@ from collections import namedtuple
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
+# TODO Separate AirFiber specific code into AirFiber class
 
 class Device(object):
     def __init__(self, host, username, password):
@@ -15,6 +16,20 @@ class Device(object):
 
     def __repr__(self):
         return '{0}{1}'.format(self.__class__.__name__, self.host)
+
+    @classmethod
+    def auto_detect(cls, host, username, password):
+        generic_device = cls(host, username, password)
+        model = generic_device.model()
+
+        if 'AirFiber' in model:
+            return AirFiber(generic_device.host,
+                    generic_device.username,
+                    generic_device.password,
+                    generic_device.session)
+        else:
+            return generic_device
+
 
     def connect(self):
         self.session.connect(self.host, username=self.username,
@@ -96,34 +111,8 @@ class Device(object):
                 else:
                     return '20'
         except AttributeError:
-            try:
-                chanbw = self.read_conf('radio.1.chanbw')
-                return chanbw
-            except AttributeError:
-                rxchanbw = self.read_conf('radio.1.rxchanbw')
-
-                if rxchanbw == '256':
-                    rxchanbw = '40'
-                elif rxchanbw == '128':
-                    rxchanbw = '30'
-                elif rxchanbw == '64':
-                    rxchanbw = '20'
-                else:
-                    rxchanbw = '10'
-
-                txchanbw = self.read_conf('radio.1.txchanbw')
-
-                if txchanbw == '256':
-                    txchanbw = '40'
-                elif txchanbw == '128':
-                    txchanbw = '30'
-                elif txchanbw == '64':
-                    txchanbw = '20'
-                else:
-                    txchanbw = '10'
-
-                Bandwidth = namedtuple('Bandwidth', ['rx', 'tx'])
-                return Bandwidth(rxchanbw, txchanbw)
+            chanbw = self.read_conf('radio.1.chanbw')
+            return chanbw
 
     def channel_shift(self):
         try:
@@ -133,6 +122,9 @@ class Device(object):
                 return 'enabled'
         except AttributeError:
             return None
+
+    def txpower(self):
+        return int(self.read_conf('radio.1.txpower'))
 
     def distance(self):
         model = self.model()
@@ -175,3 +167,42 @@ class Device(object):
             return freq + '00'
         else:
             return freq
+
+
+class AirFiber(Device):
+    def __init__(self, host, username, password, session=None):
+        self.host = host
+        self.username = username
+        self.password = password
+
+        if session is None:
+            self.session = SSHClient()
+            self.session.set_missing_host_key_policy(AutoAddPolicy())
+        else:
+            self.session = session
+
+    def channel_width(self):
+        rxchanbw = self.read_conf('radio.1.rxchanbw')
+
+        if rxchanbw == '256':
+            rxchanbw = '40'
+        elif rxchanbw == '128':
+            rxchanbw = '30'
+        elif rxchanbw == '64':
+            rxchanbw = '20'
+        else:
+            rxchanbw = '10'
+
+        txchanbw = self.read_conf('radio.1.txchanbw')
+
+        if txchanbw == '256':
+            txchanbw = '40'
+        elif txchanbw == '128':
+            txchanbw = '30'
+        elif txchanbw == '64':
+            txchanbw = '20'
+        else:
+            txchanbw = '10'
+
+        Bandwidth = namedtuple('Bandwidth', ['rx', 'tx'])
+        return Bandwidth(rxchanbw, txchanbw)
