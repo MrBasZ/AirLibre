@@ -3,8 +3,6 @@ from collections import namedtuple
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
-# TODO Separate AirFiber specific code into AirFiber class
-
 class Device(object):
     def __init__(self, host, username, password):
         self.host = host
@@ -41,8 +39,8 @@ class Device(object):
     def scp(self):
         return SCPClient(self.transport())
 
-    def download_conf(self):
-        return self.scp().get('/tmp/system.cfg')
+    def download_conf(self, local_path=''):
+        return self.scp().get('/tmp/system.cfg', local_path=local_path)
 
     def run(self, command):
         stdin, stdout, stderr = self.session.exec_command(command)
@@ -83,36 +81,31 @@ class Device(object):
     def frequency(self):
         if self.mode() == 'managed':
             return self.live_frequency()
-        try:
-            freq = self.read_conf('radio.1.freq')
-            if freq != '0':
-                return freq
-            else:
-                return 'auto/{}'.format(self.live_frequency())
-        except AttributeError:
-            Frequency = namedtuple('Frequency', ['rx', 'tx'])
-            return Frequency(self.read_conf('radio.1.tx_freq'),
-                                self.read_conf('radio.1.rx_freq'))
+        freq = self.read_conf('radio.1.freq')
+        if freq != '0':
+            return int(freq)
+        else:
+            return self.live_frequency()
 
     def channel_width(self):
         try:
             clksel = self.read_conf('radio.1.clksel')
             chanbw = self.read_conf('radio.1.chanbw')
             if clksel == '4':
-                return '5'
+                return 5
             elif clksel == '2':
                 if chanbw == '8':
-                    return chanbw
+                    return int(chanbw)
                 else:
-                    return '10'
+                    return 10
             elif clksel == '1':
                 if chanbw == '30':
-                    return chanbw
+                    return int(chanbw)
                 else:
-                    return '20'
+                    return 20
         except AttributeError:
             chanbw = self.read_conf('radio.1.chanbw')
-            return chanbw
+            return int(chanbw)
 
     def channel_shift(self):
         try:
@@ -160,13 +153,13 @@ class Device(object):
         freq = self.run(cmd)[0].replace('.','')
 
         if freq.startswith('9'):
-            return freq
+            return int(freq)
         elif len(freq) == 3:
-            return freq + '0'
+            return int(freq + '0')
         elif len(freq) == 2:
-            return freq + '00'
+            return int(freq + '00')
         else:
-            return freq
+            return int(freq)
 
 
 class AirFiber(Device):
@@ -206,3 +199,8 @@ class AirFiber(Device):
 
         Bandwidth = namedtuple('Bandwidth', ['rx', 'tx'])
         return Bandwidth(rxchanbw, txchanbw)
+
+    def frequency(self):
+        Frequency = namedtuple('Frequency', ['rx', 'tx'])
+        return Frequency(self.read_conf('radio.1.tx_freq'),
+                            self.read_conf('radio.1.rx_freq'))
