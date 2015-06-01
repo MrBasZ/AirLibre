@@ -15,12 +15,24 @@ class Device(object):
     def __repr__(self):
         return '{0}{1}'.format(self.__class__.__name__, self.host)
 
+    def __enter__(self):
+        return super().__enter__()
+
+    def __exit__(self, t, value, traceback):
+        self.disconnect()
+        return super().__exit__(t, value, traceback)
+
     @classmethod
     def auto_detect(cls, host, username, password):
         generic_device = cls(host, username, password)
         model = generic_device.model()
 
-        if 'AirFiber' in model:
+        if model == 'airFiber 24G':
+            return AirFiber24(generic_device.host,
+                    generic_device.username,
+                    generic_device.password,
+                    generic_device.session)
+        elif model.startswith('airFiber'):
             return AirFiber(generic_device.host,
                     generic_device.username,
                     generic_device.password,
@@ -77,6 +89,9 @@ class Device(object):
 
     def hostname(self):
         return self.read_conf('resolv.host.1.name')
+
+    def ssid(self):
+        return self.read_conf('wireless.1.ssid')
 
     def frequency(self):
         if self.mode() == 'managed':
@@ -204,3 +219,8 @@ class AirFiber(Device):
         Frequency = namedtuple('Frequency', ['rx', 'tx'])
         return Frequency(self.read_conf('radio.1.tx_freq'),
                             self.read_conf('radio.1.rx_freq'))
+
+
+class AirFiber24(AirFiber):
+    def channel_width(self):
+        return 100
