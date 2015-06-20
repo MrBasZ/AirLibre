@@ -16,11 +16,10 @@ class Device(object):
         return '{0}{1}'.format(self.__class__.__name__, self.host)
 
     def __enter__(self):
-        return super().__enter__()
+        return self
 
     def __exit__(self, t, value, traceback):
         self.disconnect()
-        return super().__exit__(t, value, traceback)
 
     @classmethod
     def auto_detect(cls, host, username, password):
@@ -57,7 +56,7 @@ class Device(object):
     def run(self, command):
         stdin, stdout, stderr = self.session.exec_command(command)
         output = [line.rstrip() for line in stdout.readlines()]
-        return list(output)
+        return output
 
     def read_conf(self, name, config="/tmp/system.cfg"):
         values = self.run('grep "{0}=" {1}'.format(name, config))
@@ -92,6 +91,9 @@ class Device(object):
 
     def ssid(self):
         return self.read_conf('wireless.1.ssid')
+
+    def discover(self):
+        return self.run('discover')
 
     def frequency(self):
         if self.mode() == 'managed':
