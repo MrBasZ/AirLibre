@@ -93,7 +93,8 @@ class Device(object):
         return self.read_conf('wireless.1.ssid')
 
     def discover(self):
-        return self.run('discover')
+        discovery = self.run('discover')
+        return Discovery.from_discovery(discovery)
 
     def frequency(self):
         if self.mode() == 'managed':
@@ -226,3 +227,17 @@ class AirFiber(Device):
 class AirFiber24(AirFiber):
     def channel_width(self):
         return 100
+
+
+class Discovery(object):
+    def __init__(self, discovery):
+        self.discovery = discovery
+        discovery = discovery.split()
+        self.macaddress = discovery[0]
+        self.ipaddress = discovery[1]
+        self.model = ' '.join(discovery[2:-1])
+        self.hostname = discovery[-1]
+
+    @classmethod
+    def from_discovery(cls, discovery):
+        return [Discovery(discover) for discover in discovery]
